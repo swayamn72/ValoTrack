@@ -1,0 +1,9 @@
+<resources>
+    <string name="app_name">ValoTrack</string>
+    <string-array name="regions_array">
+        <item>NA</item>
+        <item>AP</item>
+        <item>EU</item>
+        <item>KR</item>
+    </string-array>
+</resources>
