@@ -59,6 +59,9 @@ dependencies {
 // For logging API requests and responses (very useful for debugging)
     implementation("com.squareup.okhttp3:logging-interceptor:4.11.0")
 
+    // For loading images from a URL
+    implementation("io.coil-kt:coil:2.6.0")
+
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
