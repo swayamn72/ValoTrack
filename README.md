@@ -19,7 +19,7 @@ To get a local copy up and running on your machine, follow these steps.
 
 1.  **Clone the repository.**
     ```sh
-    git clone [https://github.com/your-github-username/ValoTrack.git](https://github.com/your-github-username/ValoTrack.git)
+    git clone [https://github.com/swayamn72/ValoTrack.git](https://github.com/swayamn72/ValoTrack.git)
     ```
 2.  **Open the project** in Android Studio.
 3.  **Create `local.properties` file:** In the root directory of the project, create a file named `local.properties`.
