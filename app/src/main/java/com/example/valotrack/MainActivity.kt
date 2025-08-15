@@ -2,15 +2,20 @@ package com.example.valotrack
 
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
+import android.view.View
 import android.widget.ArrayAdapter
 import android.widget.Button
 import android.widget.EditText
-import android.widget.ImageView // Import ImageView
+import android.widget.ImageView
+import android.widget.ProgressBar
 import android.widget.Spinner
 import android.widget.TextView
 import android.widget.Toast
 import androidx.lifecycle.lifecycleScope
-import coil.load // Import the Coil 'load' function
+import androidx.recyclerview.widget.LinearLayoutManager
+import androidx.recyclerview.widget.RecyclerView
+import coil.load
+import com.example.valotrack.adapter.MatchHistoryAdapter
 import com.example.valotrack.api.RetrofitInstance
 import kotlinx.coroutines.launch
 import java.util.Locale
@@ -20,15 +25,22 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
 
-        // Find the new ImageView
-        val rankImageView = findViewById<ImageView>(R.id.ivRankImage)
-
+        // Find all UI elements
         val regionSpinner = findViewById<Spinner>(R.id.spinnerRegion)
         val playerNameEditText = findViewById<EditText>(R.id.etPlayerName)
         val tagEditText = findViewById<EditText>(R.id.etTag)
         val searchButton = findViewById<Button>(R.id.btnSearch)
-        val resultTextView = findViewById<TextView>(R.id.tvResult)
+        val loadingProgressBar = findViewById<ProgressBar>(R.id.loadingProgressBar)
+        val rankImageView = findViewById<ImageView>(R.id.ivRankImage)
+        val rankTextView = findViewById<TextView>(R.id.tvRankText)
+        val rrProgressBar = findViewById<ProgressBar>(R.id.rrProgressBar)
+        val rrTextView = findViewById<TextView>(R.id.tvRrText)
+        val matchHistoryRecyclerView = findViewById<RecyclerView>(R.id.rvMatchHistory) // Find the RecyclerView
 
+        // Set up the RecyclerView's LayoutManager. This tells it to arrange items in a vertical list.
+        matchHistoryRecyclerView.layoutManager = LinearLayoutManager(this)
+
+        // ArrayAdapter setup (no changes needed)
         ArrayAdapter.createFromResource(
             this,
             R.array.regions_array,
@@ -45,32 +57,57 @@ class MainActivity : AppCompatActivity() {
 
             if (playerName.isNotEmpty() && tag.isNotEmpty()) {
                 lifecycleScope.launch {
+                    // --- Start of search ---
+                    // 1. Show loading circle and hide all previous results
+                    loadingProgressBar.visibility = View.VISIBLE
+                    rankImageView.visibility = View.GONE
+                    rankTextView.visibility = View.GONE
+                    rrProgressBar.visibility = View.GONE
+                    rrTextView.visibility = View.GONE
+                    matchHistoryRecyclerView.visibility = View.GONE // Hide the list too
+
                     try {
-                        val response = RetrofitInstance.api.getPlayerMmr(region, playerName, tag)
-                        val rank = response.data?.currentTierPatched ?: "Unranked"
-                        val rr = response.data?.rankingInTier ?: 0
+                        // --- First API Call: Get Rank ---
+                        val rankResponse = RetrofitInstance.api.getPlayerMmr(region, playerName, tag)
+                        val rank = rankResponse.data?.currentTierPatched ?: "Unranked"
+                        val rr = rankResponse.data?.rankingInTier ?: 0
+                        val rankImageUrl = rankResponse.data?.images?.large
 
-                        // Get the image URL
-                        val rankImageUrl = response.data?.images?.large
+                        // 2. Show the rank result views
+                        rankImageView.visibility = View.VISIBLE
+                        rankTextView.visibility = View.VISIBLE
+                        rankTextView.text = rank
 
-                        // Use Coil to load the image
+                        if (rank != "Unranked") {
+                            rrProgressBar.visibility = View.VISIBLE
+                            rrTextView.visibility = View.VISIBLE
+                            rrTextView.text = "$rr / 100 RR"
+                            rrProgressBar.progress = rr
+                        }
+
                         if (rankImageUrl != null) {
-                            rankImageView.load(rankImageUrl) {
-                                crossfade(true) // Optional: for a fade-in effect
-                                placeholder(R.drawable.ic_launcher_background) // Optional: shows while loading
-                                error(R.drawable.ic_launcher_foreground) // Optional: shows if image fails to load
-                            }
+                            rankImageView.load(rankImageUrl)
                         } else {
-                            // If there's no image URL (e.g., unranked), clear the ImageView
                             rankImageView.setImageResource(android.R.color.transparent)
                         }
 
-                        resultTextView.text = "Rank: $rank\nRR: $rr"
+                        // --- Second API Call: Get Match History ---
+                        val matchHistoryResponse = RetrofitInstance.api.getMatchHistory(region, playerName, tag)
+                        if (matchHistoryResponse.data.isNotEmpty()) {
+                            matchHistoryRecyclerView.visibility = View.VISIBLE // Show the list
+                            // Create and set the adapter with the match data
+                            val adapter = MatchHistoryAdapter(matchHistoryResponse.data, playerName, tag)
+                            matchHistoryRecyclerView.adapter = adapter
+                        }
 
                     } catch (e: Exception) {
-                        resultTextView.text = "Error: ${e.message}"
-                        rankImageView.setImageResource(android.R.color.transparent) // Clear image on error too
+                        // On error, just show the error text
+                        rankTextView.visibility = View.VISIBLE
+                        rankTextView.text = "Error: ${e.message}"
                         Toast.makeText(this@MainActivity, "Error: ${e.message}", Toast.LENGTH_LONG).show()
+                    } finally {
+                        // 3. This always runs: Hide the loading circle
+                        loadingProgressBar.visibility = View.GONE
                     }
                 }
             } else {
